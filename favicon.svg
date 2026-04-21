@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <circle cx="32" cy="32" r="32" fill="#0f0f1a"/>
+  <!-- Red top-left -->
+  <path d="M32 32 L4 32 A28 28 0 0 1 32 4 Z" fill="#ff4d4d"/>
+  <!-- Green top-right -->
+  <path d="M32 32 L32 4 A28 28 0 0 1 60 32 Z" fill="#4dff91"/>
+  <!-- Yellow bottom-left -->
+  <path d="M32 32 L4 32 A28 28 0 0 0 32 60 Z" fill="#ffd84d"/>
+  <!-- Blue bottom-right -->
+  <path d="M32 32 L32 60 A28 28 0 0 0 60 32 Z" fill="#4da6ff"/>
+  <!-- Center circle -->
+  <circle cx="32" cy="32" r="10" fill="#0f0f1a"/>
+</svg>

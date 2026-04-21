@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buddy Dice</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --border: #2a2a4a;
+      --text: #e0e0f0;
+      --muted: #7070a0;
+      --accent: #6c63ff;
+      --radius: 20px;
+
+      --red:    #ff4d4d;
+      --green:  #4dff91;
+      --blue:   #4da6ff;
+      --yellow: #ffd84d;
+
+      --red-dim:    #661a1a;
+      --green-dim:  #1a6638;
+      --blue-dim:   #1a3d66;
+      --yellow-dim: #665a1a;
+
+      --red-glow:    0 0 30px #ff4d4d88, 0 0 60px #ff4d4d44;
+      --green-glow:  0 0 30px #4dff9188, 0 0 60px #4dff9144;
+      --blue-glow:   0 0 30px #4da6ff88, 0 0 60px #4da6ff44;
+      --yellow-glow: 0 0 30px #ffd84d88, 0 0 60px #ffd84d44;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-evenly;
+      padding: 8px 16px;
+      gap: 0;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: clamp(1.3rem, 5vw, 1.8rem);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent) 0%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-top: 1px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Score bar ── */
+    .score-bar {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 7px 16px;
+      flex-shrink: 0;
+    }
+
+    .score-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+
+    .score-item .label {
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .score-item .value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+      transition: transform 0.15s ease;
+    }
+
+    .score-item .value.bump {
+      transform: scale(1.3);
+    }
+
+    /* ── Board ── */
+    .board-wrap {
+      /* Square: never wider than screen, never taller than ~55% of viewport */
+      width: min(calc(100vw - 32px), 55dvh);
+      max-width: 420px;
+      aspect-ratio: 1;
+      position: relative;
+      flex-shrink: 0;
+      align-self: center;
+    }
+
+    .board {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 10px;
+      border-radius: 50%;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn {
+      border: none;
+      cursor: pointer;
+      transition: filter 0.12s ease, transform 0.08s ease;
+      position: relative;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.18);
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    .btn:active::after { opacity: 1; }
+
+    /* Rounded corners per quadrant */
+    .btn-red    { background: var(--red-dim);    border-radius: 100% 6px 6px 6px; }
+    .btn-green  { background: var(--green-dim);  border-radius: 6px 100% 6px 6px; }
+    .btn-blue   { background: var(--blue-dim);   border-radius: 6px 6px 6px 100%; }
+    .btn-yellow { background: var(--yellow-dim); border-radius: 6px 6px 100% 6px; }
+
+    /* Lit state */
+    .btn-red.lit    { background: var(--red);    box-shadow: var(--red-glow);    filter: brightness(1.1); }
+    .btn-green.lit  { background: var(--green);  box-shadow: var(--green-glow);  filter: brightness(1.1); }
+    .btn-blue.lit   { background: var(--blue);   box-shadow: var(--blue-glow);   filter: brightness(1.1); }
+    .btn-yellow.lit { background: var(--yellow); box-shadow: var(--yellow-glow); filter: brightness(1.1); }
+
+    .btn.disabled { pointer-events: none; }
+    .btn:not(.disabled):hover { filter: brightness(1.2); }
+
+    /* Center circle */
+    .center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 30%;
+      aspect-ratio: 1;
+      background: var(--bg);
+      border-radius: 50%;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--border);
+      gap: 2px;
+    }
+
+    .center .round-num {
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .center .round-lbl {
+      font-size: 0.5rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Status message ── */
+    .status {
+      font-size: 0.88rem;
+      color: var(--muted);
+      text-align: center;
+      min-height: 1.3em;
+      font-weight: 500;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .status.good  { color: var(--green); }
+    .status.bad   { color: var(--red); }
+    .status.info  { color: var(--accent); }
+
+    /* ── Buttons ── */
+    .controls {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .cta {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: opacity 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .cta:active { transform: scale(0.97); }
+
+    .cta-start {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .cta-start:disabled {
+      opacity: 0.4;
+      cursor: default;
+      transform: none;
+    }
+
+    .cta-reset {
+      background: var(--surface);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      flex: 0 0 auto;
+      padding: 14px 18px;
+    }
+
+    /* ── Difficulty ── */
+    .difficulty {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .diff-btn {
+      flex: 1;
+      padding: 7px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .diff-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(108,99,255,0.12);
+    }
+
+    /* ── Game over overlay ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10,10,20,0.88);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .overlay.show { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+      animation: pop .25s ease;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.85); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    .modal .emoji { font-size: 3rem; margin-bottom: 12px; }
+
+    .modal h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .modal .detail {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    .modal .big-score {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--accent);
+      line-height: 1.1;
+      margin: 10px 0 4px;
+    }
+
+    .modal .record {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .modal .record span { color: var(--yellow); }
+
+    .modal .cta { width: 100%; margin-top: 6px; }
+
+    /* ── Ripple on board buttons ── */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      background: rgba(255,255,255,0.25);
+      animation: ripple-anim 0.5s linear;
+      pointer-events: none;
+    }
+
+    @keyframes ripple-anim {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* ── Desktop adjustments ── */
+    @media (min-width: 480px) {
+      body { padding: 12px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Buddy Dice</h1>
+  </header>
+
+  <div class="score-bar">
+    <div class="score-item">
+      <span class="label">Ronda</span>
+      <span class="value" id="roundDisplay">—</span>
+    </div>
+    <div class="score-item">
+      <span class="label">Puntaje</span>
+      <span class="value" id="scoreDisplay">0</span>
+    </div>
+    <div class="score-item">
+      <span class="label">Récord</span>
+      <span class="value" id="bestDisplay">0</span>
+    </div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board">
+      <button class="btn btn-red    disabled" data-color="red"    aria-label="Rojo"></button>
+      <button class="btn btn-green  disabled" data-color="green"  aria-label="Verde"></button>
+      <button class="btn btn-blue   disabled" data-color="blue"   aria-label="Azul"></button>
+      <button class="btn btn-yellow disabled" data-color="yellow" aria-label="Amarillo"></button>
+    </div>
+    <div class="center">
+      <span class="round-num" id="centerRound">?</span>
+      <span class="round-lbl">ronda</span>
+    </div>
+  </div>
+
+  <p class="status info" id="status">Elige dificultad y presiona Iniciar</p>
+
+  <div class="difficulty" id="difficultyBar">
+    <button class="diff-btn active" data-speed="900">Fácil</button>
+    <button class="diff-btn"        data-speed="600">Normal</button>
+    <button class="diff-btn"        data-speed="350">Difícil</button>
+  </div>
+
+  <div class="controls">
+    <button class="cta cta-start" id="startBtn">▶ Iniciar</button>
+    <button class="cta cta-reset" id="resetBtn" title="Reiniciar">↺</button>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <div class="emoji" id="modalEmoji">😵</div>
+      <h2 id="modalTitle">¡Game Over!</h2>
+      <p class="detail" id="modalDetail">Fallaste en la ronda</p>
+      <div class="big-score" id="modalScore">0</div>
+      <p class="record" id="modalRecord">Récord: <span id="modalBest">0</span></p>
+      <button class="cta cta-start" id="playAgainBtn">▶ Jugar de nuevo</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ── State ──────────────────────────────────────────────
+  const COLORS = ['red', 'green', 'blue', 'yellow'];
+  const FREQS  = { red: 262, green: 330, blue: 392, yellow: 523 };
+
+  let sequence   = [];
+  let playerIdx  = 0;
+  let round      = 0;
+  let score      = 0;
+  let best       = parseInt(localStorage.getItem('buddydice_best') || '0', 10);
+  let speed      = 900;   // ms per flash
+  let playing    = false;
+  let accepting  = false;
+
+  // ── DOM refs ───────────────────────────────────────────
+  const btns        = document.querySelectorAll('.btn');
+  const startBtn    = document.getElementById('startBtn');
+  const resetBtn    = document.getElementById('resetBtn');
+  const playAgainBtn= document.getElementById('playAgainBtn');
+  const statusEl    = document.getElementById('status');
+  const roundEl     = document.getElementById('roundDisplay');
+  const scoreEl     = document.getElementById('scoreDisplay');
+  const bestEl      = document.getElementById('bestDisplay');
+  const centerEl    = document.getElementById('centerRound');
+  const overlay     = document.getElementById('overlay');
+  const diffBtns    = document.querySelectorAll('.diff-btn');
+
+  const modalEmoji  = document.getElementById('modalEmoji');
+  const modalTitle  = document.getElementById('modalTitle');
+  const modalDetail = document.getElementById('modalDetail');
+  const modalScore  = document.getElementById('modalScore');
+  const modalBest   = document.getElementById('modalBest');
+
+  // ── Audio ──────────────────────────────────────────────
+  let ctx = null;
+
+  function getAudioCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
+
+  function playTone(freq, duration = 0.18, type = 'sine') {
+    try {
+      const ac  = getAudioCtx();
+      const osc = ac.createOscillator();
+      const gain= ac.createGain();
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.frequency.value = freq;
+      osc.type = type;
+      gain.gain.setValueAtTime(0.3, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+      osc.start(ac.currentTime);
+      osc.stop(ac.currentTime + duration);
+    } catch (_) {}
+  }
+
+  function playError() {
+    try {
+      const ac  = getAudioCtx();
+      const osc = ac.createOscillator();
+      const gain= ac.createGain();
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, ac.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ac.currentTime + 0.4);
+      gain.gain.setValueAtTime(0.4, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.4);
+      osc.start(ac.currentTime);
+      osc.stop(ac.currentTime + 0.5);
+    } catch (_) {}
+  }
+
+  function playSuccess() {
+    [523, 659, 784, 1047].forEach((f, i) => {
+      setTimeout(() => playTone(f, 0.15), i * 100);
+    });
+  }
+
+  // ── UI helpers ─────────────────────────────────────────
+  function setStatus(msg, cls = '') {
+    statusEl.className = 'status' + (cls ? ' ' + cls : '');
+    statusEl.textContent = msg;
+  }
+
+  function updateScoreDisplay() {
+    bestEl.textContent = best;
+    scoreEl.textContent = score;
+  }
+
+  function bumpScore() {
+    scoreEl.classList.remove('bump');
+    void scoreEl.offsetWidth;
+    scoreEl.classList.add('bump');
+    setTimeout(() => scoreEl.classList.remove('bump'), 200);
+  }
+
+  function lightUp(color, duration) {
+    return new Promise(resolve => {
+      const el = document.querySelector(`.btn-${color}`);
+      el.classList.add('lit');
+      playTone(FREQS[color], duration / 1000 * 0.9);
+      setTimeout(() => {
+        el.classList.remove('lit');
+        resolve();
+      }, duration);
+    });
+  }
+
+  function addRipple(el, e) {
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    const rect = el.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = (e.clientX || e.touches?.[0]?.clientX || rect.left + rect.width/2) - rect.left - size/2;
+    const y = (e.clientY || e.touches?.[0]?.clientY || rect.top  + rect.height/2) - rect.top  - size/2;
+    r.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px`;
+    el.appendChild(r);
+    r.addEventListener('animationend', () => r.remove());
+  }
+
+  function setButtonsDisabled(dis) {
+    btns.forEach(b => {
+      if (dis) b.classList.add('disabled');
+      else     b.classList.remove('disabled');
+    });
+  }
+
+  // ── Sequence playback ──────────────────────────────────
+  async function playSequence() {
+    setButtonsDisabled(true);
+    setStatus('¡Observa!', 'info');
+    accepting = false;
+
+    const flashDur = Math.max(speed * 0.6, 200);
+    const pauseDur = Math.max(speed * 0.4, 120);
+
+    for (const color of sequence) {
+      await lightUp(color, flashDur);
+      await delay(pauseDur);
+    }
+
+    setButtonsDisabled(false);
+    accepting = true;
+    setStatus('¡Tu turno!', 'good');
+  }
+
+  function delay(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  // ── Game flow ──────────────────────────────────────────
+  function startGame() {
+    sequence   = [];
+    playerIdx  = 0;
+    round      = 0;
+    score      = 0;
+    playing    = true;
+    accepting  = false;
+
+    updateScoreDisplay();
+    startBtn.disabled = true;
+    overlay.classList.remove('show');
+
+    nextRound();
+  }
+
+  async function nextRound() {
+    round++;
+    playerIdx = 0;
+    roundEl.textContent = round;
+    centerEl.textContent = round;
+
+    sequence.push(COLORS[Math.floor(Math.random() * 4)]);
+
+    await delay(500);
+    await playSequence();
+  }
+
+  function handlePlayerInput(color) {
+    if (!accepting || !playing) return;
+
+    const expected = sequence[playerIdx];
+
+    if (color === expected) {
+      // Correct
+      const el = document.querySelector(`.btn-${color}`);
+      lightUp(color, 200);
+      playerIdx++;
+
+      if (playerIdx === sequence.length) {
+        // Completed round
+        accepting = false;
+        score += round * 10;
+        bumpScore();
+        updateScoreDisplay();
+
+        if (score > best) {
+          best = score;
+          localStorage.setItem('buddydice_best', best);
+        }
+
+        setStatus(`¡Correcto! +${round * 10} pts`, 'good');
+        playSuccess();
+
+        setTimeout(nextRound, 1000);
+      }
+    } else {
+      // Wrong
+      accepting = false;
+      playing   = false;
+      setButtonsDisabled(true);
+      playError();
+      setStatus('¡Fallaste!', 'bad');
+
+      // Flash wrong button red briefly
+      const el = document.querySelector(`.btn-${color}`);
+      el.classList.add('lit');
+      setTimeout(() => {
+        el.classList.remove('lit');
+        showGameOver();
+      }, 600);
+    }
+  }
+
+  function showGameOver() {
+    const isRecord = score >= best && score > 0;
+    modalEmoji.textContent  = isRecord ? '🏆' : (score > 50 ? '🎉' : '😵');
+    modalTitle.textContent  = isRecord ? '¡Nuevo récord!' : '¡Game Over!';
+    modalDetail.textContent = `Fallaste en la ronda ${round} — ${sequence.length} pasos`;
+    modalScore.textContent  = score;
+    modalBest.textContent   = best;
+    updateScoreDisplay();
+    overlay.classList.add('show');
+  }
+
+  function resetGame() {
+    playing   = false;
+    accepting = false;
+    sequence  = [];
+    round     = 0;
+    score     = 0;
+
+    setButtonsDisabled(true);
+    startBtn.disabled = false;
+    roundEl.textContent  = '—';
+    centerEl.textContent = '?';
+    scoreEl.textContent  = '0';
+    overlay.classList.remove('show');
+    setStatus('Elige dificultad y presiona Iniciar', 'info');
+  }
+
+  // ── Events ─────────────────────────────────────────────
+  btns.forEach(btn => {
+    const trigger = (e) => {
+      if (!accepting) return;
+      addRipple(btn, e);
+      handlePlayerInput(btn.dataset.color);
+    };
+    btn.addEventListener('click',      trigger);
+    btn.addEventListener('touchstart', trigger, { passive: true });
+  });
+
+  startBtn.addEventListener('click', startGame);
+  playAgainBtn.addEventListener('click', startGame);
+  resetBtn.addEventListener('click', resetGame);
+
+  diffBtns.forEach(db => {
+    db.addEventListener('click', () => {
+      diffBtns.forEach(d => d.classList.remove('active'));
+      db.classList.add('active');
+      speed = parseInt(db.dataset.speed, 10);
+    });
+  });
+
+  // ── Init ───────────────────────────────────────────────
+  bestEl.textContent = best;
+  updateScoreDisplay();
+})();
+</script>
+</body>
+</html>
