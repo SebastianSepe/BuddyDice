@@ -618,7 +618,7 @@
     await playSequence();
   }
 
-  function handlePlayerInput(color) {
+  async function handlePlayerInput(color) {
     if (!accepting || !playing) return;
 
     const expected = sequence[playerIdx];
@@ -626,7 +626,7 @@
     if (color === expected) {
       // Correct
       const el = document.querySelector(`.btn-${color}`);
-      lightUp(color, 200);
+      await lightUp(color, 200);
       playerIdx++;
 
       if (playerIdx === sequence.length) {
