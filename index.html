@@ -144,6 +144,7 @@
       overflow: hidden;
       -webkit-tap-highlight-color: transparent;
       outline: none;
+      touch-action: manipulation;
     }
 
     .btn::after {
@@ -239,6 +240,7 @@
       letter-spacing: 0.3px;
       transition: opacity 0.15s, transform 0.1s;
       -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     .cta:active { transform: scale(0.97); }
@@ -283,6 +285,7 @@
       cursor: pointer;
       letter-spacing: 0.3px;
       transition: all 0.15s;
+      touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -695,8 +698,7 @@
       addRipple(btn, e);
       handlePlayerInput(btn.dataset.color);
     };
-    btn.addEventListener('click',      trigger);
-    btn.addEventListener('touchstart', trigger, { passive: true });
+    btn.addEventListener('pointerdown', trigger);
   });
 
   startBtn.addEventListener('click', startGame);
